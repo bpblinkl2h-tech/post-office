@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时光邮局 - 云端书信</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --paper: #f4e8d0;
+            --paper-dark: #e8d5b5;
+            --ink: #2c1810;
+            --wax: #8b2635;
+            --wax-dark: #6b1a25;
+            --envelope: #c9b896;
+            --envelope-dark: #b8a582;
+            --mailbox: #4a6741;
+            --mailbox-dark: #3a5232;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: var(--paper);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .paper-texture {
+            background-color: var(--paper);
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(139, 69, 19, 0.03) 2px, rgba(139, 69, 19, 0.03) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(139, 69, 19, 0.03) 2px, rgba(139, 69, 19, 0.03) 4px);
+            position: relative;
+        }
+
+        .paper-texture::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* 天气系统 */
+        .weather-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .rain-drop {
+            position: absolute;
+            width: 2px;
+            height: 20px;
+            background: linear-gradient(to bottom, transparent, rgba(100, 149, 237, 0.6));
+            animation: rain-fall linear infinite;
+        }
+
+        @keyframes rain-fall {
+            0% { transform: translateY(-100vh); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(100vh); opacity: 0; }
+        }
+
+        .snowflake {
+            position: absolute;
+            color: white;
+            font-size: 1em;
+            animation: snow-fall linear infinite;
+            text-shadow: 0 0 5px rgba(255,255,255,0.8);
+        }
+
+        @keyframes snow-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+
+        .sun-ray {
+            position: fixed;
+            top: -100px; right: -100px;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(255,215,0,0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: sun-pulse 4s ease-in-out infinite;
+            z-index: 1;
+        }
+
+        @keyframes sun-pulse {
+            0%, 100% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+
+        .cloud {
+            position: absolute;
+            background: rgba(255,255,255,0.8);
+            border-radius: 100px;
+            opacity: 0.9;
+            animation: cloud-drift linear infinite;
+        }
+
+        @keyframes cloud-drift {
+            0% { transform: translateX(-200px); }
+            100% { transform: translateX(calc(100vw + 200px)); }
+        }
+
+        /* 邮箱设计 */
+        .mailbox-scene {
+            position: relative;
+            width: 300px;
+            height: 400px;
+            margin: 0 auto;
+            perspective: 1000px;
+        }
+
+        .mailbox {
+            position: relative;
+            width: 200px;
+            height: 280px;
+            margin: 0 auto;
+            transform-style: preserve-3d;
+        }
+
+        .mailbox-body {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, var(--mailbox) 0%, var(--mailbox-dark) 100%);
+            border-radius: 10px 10px 20px 20px;
+            box-shadow: inset -5px 0 10px rgba(0,0,0,0.2), 0 10px 30px rgba(0,0,0,0.3);
+            border: 3px solid #2d4a25;
+        }
+
+        .mailbox-body::before {
+            content: 'POST';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Noto Serif SC', serif;
+            font-weight: 700;
+            font-size: 28px;
+            color: rgba(255,255,255,0.3);
+            letter-spacing: 8px;
+        }
+
+        .mailbox-top {
+            position: absolute;
+            top: 0; left: 10px; right: 10px;
+            height: 80px;
+            background: linear-gradient(135deg, #5a7a52 0%, var(--mailbox) 100%);
+            border-radius: 50% 50% 10px 10px;
+            box-shadow: inset 0 -5px 10px rgba(0,0,0,0.2), 0 -5px 15px rgba(0,0,0,0.2);
+            border: 3px solid #2d4a25;
+            border-bottom: none;
+        }
+
+        .mailbox-slot {
+            position: absolute;
+            top: 75px; left: 30px; right: 30px;
+            height: 15px;
+            background: #1a2f15;
+            border-radius: 10px;
+            box-shadow: inset 0 3px 5px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .mailbox-flag {
+            position: absolute;
+            right: -15px; top: 80px;
+            width: 8px; height: 60px;
+            background: #c41e3a;
+            border-radius: 4px;
+            transform-origin: bottom;
+            transition: transform 0.5s ease;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .mailbox-flag::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -6px;
+            width: 20px; height: 30px;
+            background: #c41e3a;
+            border-radius: 2px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .mailbox-flag.up { transform: rotate(-90deg); }
+
+        .mailbox-stand {
+            position: absolute;
+            bottom: -40px; left: 50%;
+            transform: translateX(-50%);
+            width: 20px; height: 40px;
+            background: linear-gradient(to right, #555, #777, #555);
+            border-radius: 0 0 5px 5px;
+        }
+
+        .mailbox-base {
+            position: absolute;
+            bottom: -50px; left: 50%;
+            transform: translateX(-50%);
+            width: 80px; height: 15px;
+            background: linear-gradient(to bottom, #666, #444);
+            border-radius: 5px;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+        }
+
+        /* 信封设计 */
+        .envelope-container {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 220px; height: 140px;
+            z-index: 5;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .envelope {
+            position: relative;
+            width: 100%; height: 100%;
+            background: var(--envelope);
+            border-radius: 2px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2), inset 0 0 20px rgba(139, 69, 19, 0.1);
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .envelope::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 0; height: 0;
+            border-left: 110px solid transparent;
+            border-right: 110px solid transparent;
+            border-top: 80px solid var(--envelope-dark);
+            transform-origin: top;
+            transition: transform 0.6s ease;
+            z-index: 3;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));
+        }
+
+        .envelope::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 0; height: 0;
+            border-left: 110px solid transparent;
+            border-right: 110px solid transparent;
+            border-bottom: 70px solid var(--envelope);
+            z-index: 2;
+        }
+
+        .envelope-left {
+            position: absolute;
+            top: 0; left: 0;
+            width: 0; height: 0;
+            border-top: 70px solid transparent;
+            border-bottom: 70px solid transparent;
+            border-left: 110px solid var(--envelope-dark);
+            z-index: 2;
+            opacity: 0.8;
+        }
+
+        .envelope-right {
+            position: absolute;
+            top: 0; right: 0;
+            width: 0; height: 0;
+            border-top: 70px solid transparent;
+            border-bottom: 70px solid transparent;
+            border-right: 110px solid var(--envelope);
+            z-index: 2;
+            opacity: 0.9;
+        }
+
+        .envelope-content {
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            background: #fffef8;
+            z-index: 1;
+            padding: 15px;
+            font-size: 12px;
+            color: var(--ink);
+            line-height: 1.6;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+            transition: transform 0.8s ease 0.3s;
+        }
+
+        .envelope-content::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(transparent, transparent 28px, rgba(139, 69, 19, 0.1) 28px, rgba(139, 69, 19, 0.1) 29px);
+            pointer-events: none;
+        }
+
+        .stamp {
+            position: absolute;
+            top: 10px; right: 10px;
+            width: 50px; height: 60px;
+            background: linear-gradient(135deg, #e8d5b5 0%, #d4c4a0 100%);
+            border: 2px solid #b8a582;
+            z-index: 4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .stamp::before {
+            content: '';
+            position: absolute;
+            top: -5px; left: -5px; right: -5px; bottom: -5px;
+            background: 
+                radial-gradient(circle at 50% 0, transparent 6px, var(--envelope) 6px),
+                radial-gradient(circle at 50% 100%, transparent 6px, var(--envelope) 6px),
+                radial-gradient(circle at 0 50%, transparent 6px, var(--envelope) 6px),
+                radial-gradient(circle at 100% 50%, transparent 6px, var(--envelope) 6px);
+            background-size: 100% 50%, 100% 50%, 50% 100%, 50% 100%;
+            background-position: top, bottom, left, right;
+            background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+        }
+
+        .stamp-inner {
+            width: 40px; height: 50px;
+            background: #8b4513;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #f4e8d0;
+            font-size: 24px;
+            border: 1px solid #a0522d;
+        }
+
+        .wax-seal {
+            position: absolute;
+            bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            width: 40px; height: 40px;
+            background: radial-gradient(circle at 30% 30%, var(--wax), var(--wax-dark));
+            border-radius: 50%;
+            z-index: 4;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 -3px 5px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .wax-seal:hover { transform: translateX(-50%) scale(1.1); }
+
+        .wax-seal::before {
+            content: '封';
+            font-family: 'Ma Shan Zheng', cursive;
+            color: rgba(255,255,255,0.9);
+            font-size: 18px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .wax-seal::after {
+            content: '';
+            position: absolute;
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            background: repeating-conic-gradient(from 0deg, transparent 0deg, rgba(0,0,0,0.1) 5deg, transparent 10deg);
+        }
+
+        /* 动画状态 */
+        .envelope-container.animate-in {
+            animation: mailbox-jump 2.5s ease-out forwards;
+            pointer-events: auto;
+        }
+
+        @keyframes mailbox-jump {
+            0% { opacity: 0; transform: translate(-50%, -50%) translateY(0) scale(0.5); }
+            15% { opacity: 1; transform: translate(-50%, -50%) translateY(-30px) scale(0.7); }
+            30% { transform: translate(-50%, -50%) translateY(10px) scale(0.9); }
+            45% { transform: translate(-50%, -50%) translateY(-180px) scale(1); }
+            60% { transform: translate(-50%, -50%) translateY(-160px) scale(1.05); }
+            75% { transform: translate(-50%, -50%) translateY(-170px) scale(1); }
+            100% { opacity: 1; transform: translate(-50%, -50%) translateY(-165px) scale(1); }
+        }
+
+        .envelope.open::before {
+            transform: rotateX(180deg);
+            z-index: 1;
+        }
+
+        .envelope.open .envelope-content {
+            transform: translateY(-90px);
+            z-index: 10;
+        }
+
+        /* 信纸页面 */
+        .letter-paper {
+            background: #fffef8;
+            background-image: repeating-linear-gradient(transparent, transparent 31px, rgba(139, 69, 19, 0.15) 31px, rgba(139, 69, 19, 0.15) 32px);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+            min-height: 600px;
+            padding: 60px 50px 50px 80px;
+            line-height: 32px;
+            color: var(--ink);
+            font-size: 18px;
+        }
+
+        .letter-paper::before {
+            content: '';
+            position: absolute;
+            left: 50px; top: 0; bottom: 0;
+            width: 2px;
+            background: rgba(255, 107, 107, 0.3);
+        }
+
+        .letter-header {
+            text-align: right;
+            margin-bottom: 30px;
+            color: #8b7355;
+            font-size: 14px;
+        }
+
+        .letter-salutation { margin-bottom: 20px; font-weight: 600; }
+
+        .letter-signature {
+            text-align: right;
+            margin-top: 40px;
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 24px;
+            color: var(--wax);
+        }
+
+        .btn-vintage {
+            background: linear-gradient(135deg, var(--envelope) 0%, var(--envelope-dark) 100%);
+            border: 2px solid #a08b6d;
+            color: var(--ink);
+            padding: 12px 30px;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-vintage:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+
+        .btn-vintage:active { transform: translateY(0); }
+
+        .btn-vintage::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-vintage:hover::before { left: 100%; }
+
+        .btn-vintage.danger {
+            background: linear-gradient(135deg, #c9b896 0%, #b8a582 100%);
+            border-color: #8b2635;
+            color: #8b2635;
+        }
+
+        .nav-vintage {
+            background: linear-gradient(to bottom, rgba(244, 232, 208, 0.95), rgba(244, 232, 208, 0.8));
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid var(--envelope-dark);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .letter-card {
+            background: #fffef8;
+            border: 1px solid var(--envelope-dark);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .letter-card::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: var(--wax);
+            transform: scaleY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .letter-card:hover::before { transform: scaleY(1); }
+
+        .letter-card:hover {
+            transform: translateX(5px);
+            box-shadow: -5px 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .letter-card.unread::after {
+            content: '';
+            position: absolute;
+            top: 10px; right: 10px;
+            width: 10px; height: 10px;
+            background: var(--wax);
+            border-radius: 50%;
+            box-shadow: 0 0 5px var(--wax);
+        }
+
+        .letter-card .delete-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%) translateX(20px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            background: #8b2635;
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            z-index: 10;
+        }
+
+        .letter-card:hover .delete-btn {
+            transform: translateY(-50%) translateX(0);
+            opacity: 1;
+        }
+
+        .letter-card .delete-btn:hover {
+            background: #6b1a25;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .postmark {
+            position: absolute;
+            bottom: 30px; right: 30px;
+            width: 80px; height: 80px;
+            border: 3px solid rgba(139, 69, 19, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(-15deg);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .postmark-inner {
+            font-size: 10px;
+            color: rgba(139, 69, 19, 0.5);
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .page {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .page.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .ink-input {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid rgba(139, 69, 19, 0.3);
+            font-family: 'Noto Serif SC', serif;
+            font-size: 18px;
+            color: var(--ink);
+            padding: 8px 0;
+            width: 100%;
+            transition: border-color 0.3s;
+            outline: none;
+        }
+
+        .ink-input:focus { border-bottom-color: var(--ink); }
+
+        .ink-textarea {
+            background: transparent;
+            border: none;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 18px;
+            color: var(--ink);
+            line-height: 32px;
+            width: 100%;
+            min-height: 400px;
+            resize: vertical;
+            outline: none;
+            padding: 0;
+        }
+
+        .vintage-select {
+            appearance: none;
+            background: var(--paper);
+            border: 2px solid var(--envelope-dark);
+            padding: 10px 40px 10px 15px;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 16px;
+            color: var(--ink);
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b5b45' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px; left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--ink);
+            color: var(--paper);
+            padding: 15px 30px;
+            border-radius: 5px;
+            font-family: 'Noto Serif SC', serif;
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.5s ease;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .divider-ornament {
+            text-align: center;
+            margin: 30px 0;
+            position: relative;
+        }
+
+        .divider-ornament::before {
+            content: '❦';
+            color: var(--envelope-dark);
+            font-size: 24px;
+            background: var(--paper);
+            padding: 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .divider-ornament::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 20%; right: 20%;
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--envelope-dark), transparent);
+        }
+
+        /* 弹窗 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background: var(--paper);
+            border: 3px solid var(--envelope-dark);
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        .share-link-box {
+            background: #fffef8;
+            border: 2px solid var(--envelope-dark);
+            padding: 15px;
+            border-radius: 5px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--ink);
+            margin: 15px 0;
+            position: relative;
+            padding-right: 80px;
+        }
+
+        .copy-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--envelope);
+            border: 1px solid var(--envelope-dark);
+            padding: 5px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 14px;
+        }
+
+        .copy-btn:hover { background: var(--envelope-dark); }
+
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--envelope-dark);
+            border-top-color: var(--wax);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 微信分享提示 */
+        .wechat-tip {
+            background: #07c160;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .wechat-tip.show { display: block; }
+
+        @media (max-width: 768px) {
+            .mailbox-scene { transform: scale(0.8); }
+            .letter-paper { padding: 40px 30px 30px 50px; font-size: 16px; }
+            .letter-card .delete-btn {
+                transform: translateY(-50%) translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="paper-texture">
+    <div class="weather-container" id="weatherContainer"></div>
+    <div class="sun-ray" id="sunRay" style="display: none;"></div>
+
+    <!-- 导航 -->
+    <nav class="nav-vintage fixed w-full z-50 px-6 py-4">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="showPage('home')">
+                <span class="text-3xl">✉️</span>
+                <h1 class="text-2xl font-bold text-[#2c1810]" style="font-family: 'Ma Shan Zheng', cursive;">时光邮局</h1>
+            </div>
+            <div class="flex items-center gap-6">
+                <button onclick="showPage('home')" class="text-[#2c1810] hover:text-[#8b2635] transition-colors font-semibold hidden sm:block">首页</button>
+                <button onclick="showPage('write')" class="text-[#2c1810] hover:text-[#8b2635] transition-colors font-semibold">写信</button>
+                <button onclick="showPage('inbox')" class="text-[#2c1810] hover:text-[#8b2635] transition-colors font-semibold relative">
+                    信箱
+                    <span id="unreadBadge" class="hidden absolute -top-2 -right-3 w-5 h-5 bg-[#8b2635] text-white text-xs rounded-full flex items-center justify-center">0</span>
+                </button>
+                <select id="weatherSelect" class="vintage-select rounded" onchange="changeWeather(this.value)">
+                    <option value="sunny">☀️ 晴天</option>
+                    <option value="rainy">🌧️ 雨天</option>
+                    <option value="snowy">❄️ 雪天</option>
+                    <option value="cloudy">☁️ 多云</option>
+                </select>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 首页 -->
+    <div id="home" class="page active pt-24 min-h-screen">
+        <div class="max-w-4xl mx-auto px-6 py-12 text-center">
+            <h2 class="text-5xl font-bold text-[#2c1810] mb-6" style="font-family: 'Ma Shan Zheng', cursive;">
+                纸短情长，见字如面
+            </h2>
+            <p class="text-xl text-[#6b5b45] mb-12 max-w-2xl mx-auto leading-relaxed">
+                在这个快节奏的时代，让我们重拾书信的温度。<br>
+                写一封信，生成专属链接，寄给远方的TA。
+            </p>
+
+            <div class="mailbox-scene mb-12">
+                <div class="mailbox" id="mailbox">
+                    <div class="mailbox-top"></div>
+                    <div class="mailbox-slot"></div>
+                    <div class="mailbox-body"></div>
+                    <div class="mailbox-flag" id="mailboxFlag"></div>
+                    <div class="mailbox-stand"></div>
+                    <div class="mailbox-base"></div>
+                    
+                    <div class="envelope-container" id="envelopeContainer">
+                        <div class="envelope" id="envelope" onclick="openEnvelope()">
+                            <div class="envelope-left"></div>
+                            <div class="envelope-right"></div>
+                            <div class="envelope-content" id="envelopePreview">
+                                <p class="truncate">点击打开信件...</p>
+                            </div>
+                            <div class="stamp">
+                                <div class="stamp-inner">🦋</div>
+                            </div>
+                            <div class="wax-seal"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-6 justify-center flex-wrap">
+                <button onclick="checkMail()" class="btn-vintage rounded-lg flex items-center gap-2 text-lg px-8 py-4">
+                    <span>📬</span> 查收信件
+                </button>
+                <button onclick="showPage('write')" class="btn-vintage rounded-lg flex items-center gap-2 text-lg px-8 py-4">
+                    <span>✒️</span> 写一封信
+                </button>
+            </div>
+
+            <div class="divider-ornament mt-16"></div>
+
+            <div class="grid md:grid-cols-3 gap-8 mt-12">
+                <div class="bg-[#fffef8] p-6 rounded-lg border border-[#c9b896] shadow-md">
+                    <div class="text-4xl mb-4">📝</div>
+                    <h3 class="text-xl font-bold text-[#2c1810] mb-2">亲笔书写</h3>
+                    <p class="text-[#6b5b45]">写下真挚的文字，系统自动生成专属分享链接</p>
+                </div>
+                <div class="bg-[#fffef8] p-6 rounded-lg border border-[#c9b896] shadow-md">
+                    <div class="text-4xl mb-4">🔗</div>
+                    <h3 class="text-xl font-bold text-[#2c1810] mb-2">链接分享</h3>
+                    <p class="text-[#6b5b45]">通过微信、短信发送链接，对方点击即可查看</p>
+                </div>
+                <div class="bg-[#fffef8] p-6 rounded-lg border border-[#c9b896] shadow-md">
+                    <div class="text-4xl mb-4">💌</div>
+                    <h3 class="text-xl font-bold text-[#2c1810] mb-2">一键回信</h3>
+                    <p class="text-[#6b5b45]">收件人阅读后可直接回信，书信往来不断</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 写信页面 -->
+    <div id="write" class="page pt-24 min-h-screen">
+        <div class="max-w-3xl mx-auto px-6 py-8">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-3xl font-bold text-[#2c1810]" style="font-family: 'Ma Shan Zheng', cursive;">提笔写信</h2>
+                <button onclick="showPage('home')" class="text-[#6b5b45] hover:text-[#2c1810] transition-colors">← 返回</button>
+            </div>
+
+            <div class="letter-paper rounded-lg relative">
+                <div class="postmark">
+                    <div class="postmark-inner">
+                        时光邮局<br>
+                        <span id="postmarkDate"></span>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-[#6b5b45] text-sm mb-2">致：</label>
+                    <input type="text" id="recipient" class="ink-input" placeholder="请输入收信人昵称...">
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-[#6b5b45] text-sm mb-2">主题：</label>
+                    <input type="text" id="subject" class="ink-input" placeholder="信件主题...">
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-[#6b5b45] text-sm mb-2">正文：</label>
+                    <textarea id="letterContent" class="ink-textarea" placeholder="在此写下你的心意..."></textarea>
+                </div>
+
+                <div class="mb-8">
+                    <label class="block text-[#6b5b45] text-sm mb-2">署名：</label>
+                    <input type="text" id="sender" class="ink-input" placeholder="你的名字...">
+                </div>
+
+                <div class="flex gap-4 justify-end flex-wrap">
+                    <button onclick="saveDraft()" class="btn-vintage rounded-lg text-sm">💾 存草稿</button>
+                    <button onclick="sendLetter()" class="btn-vintage rounded-lg flex items-center gap-2">
+                        <span>🔥</span> 火漆封印并生成分享链接
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分享弹窗 -->
+    <div class="modal-overlay" id="shareModal">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold text-[#2c1810] mb-4 text-center" style="font-family: 'Ma Shan Zheng', cursive;">✉️ 信件已封印</h3>
+            <p class="text-[#6b5b45] text-center mb-4">复制下方链接发送给收信人</p>
+            
+            <div class="share-link-box" id="shareLinkBox">
+                <span id="shareLinkText"></span>
+                <button class="copy-btn" onclick="copyShareLink()">复制</button>
+            </div>
+
+            <div id="qrcode"></div>
+            <p class="text-center text-sm text-[#6b5b45] mt-2">扫描二维码在手机上打开</p>
+
+            <div class="wechat-tip" id="wechatTip">
+                💡 微信用户：点击右上角"..."→"复制链接"→粘贴给好友
+            </div>
+
+            <div class="flex gap-4 justify-center mt-6 flex-wrap">
+                <button onclick="closeShareModal()" class="btn-vintage rounded-lg">关闭</button>
+                <button onclick="shareViaNative()" class="btn-vintage rounded-lg flex items-center gap-2">
+                    <span>📤</span> 系统分享
+                </button>
+                <button onclick="shareToWeChat()" class="btn-vintage rounded-lg flex items-center gap-2">
+                    <span>💬</span> 微信分享
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 信箱页面 -->
+    <div id="inbox" class="page pt-24 min-h-screen">
+        <div class="max-w-4xl mx-auto px-6 py-8">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-3xl font-bold text-[#2c1810]" style="font-family: 'Ma Shan Zheng', cursive;">我的信箱</h2>
+                <div class="flex gap-4">
+                    <button onclick="showPage('write')" class="btn-vintage rounded-lg text-sm">✒️ 写信</button>
+                    <button onclick="showPage('home')" class="text-[#6b5b45] hover:text-[#2c1810] transition-colors">← 返回</button>
+                </div>
+            </div>
+
+            <div class="flex gap-4 mb-6 flex-wrap">
+                <button onclick="filterLetters('all')" class="px-4 py-2 rounded-full bg-[#c9b896] text-[#2c1810] text-sm font-semibold hover:bg-[#b8a582] transition-colors" id="filter-all">全部</button>
+                <button onclick="filterLetters('unread')" class="px-4 py-2 rounded-full bg-[#fffef8] border border-[#c9b896] text-[#6b5b45] text-sm hover:bg-[#f4e8d0] transition-colors" id="filter-unread">未读</button>
+                <button onclick="filterLetters('sent')" class="px-4 py-2 rounded-full bg-[#fffef8] border border-[#c9b896] text-[#6b5b45] text-sm hover:bg-[#f4e8d0] transition-colors" id="filter-sent">已发送</button>
+            </div>
+
+            <div id="letterList" class="space-y-4"></div>
+            <div id="emptyState" class="text-center py-20 hidden">
+                <div class="text-6xl mb-4">📭</div>
+                <p class="text-[#6b5b45] text-lg">信箱空空如也...</p>
+                <button onclick="showPage('write')" class="btn-vintage rounded-lg mt-4">写第一封信</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 读信页面 -->
+    <div id="read" class="page pt-24 min-h-screen">
+        <div class="max-w-3xl mx-auto px-6 py-8">
+            <div class="flex items-center justify-between mb-8">
+                <button onclick="backFromRead()" class="text-[#6b5b45] hover:text-[#2c1810] transition-colors flex items-center gap-2">
+                    <span>←</span> 返回
+                </button>
+                <div class="flex gap-3" id="readActions">
+                    <button onclick="replyLetter()" class="btn-vintage rounded-lg text-sm" id="replyBtn">↩️ 回信</button>
+                    <button onclick="shareThisLetter()" class="btn-vintage rounded-lg text-sm">🔗 分享</button>
+                    <button onclick="deleteCurrentLetter()" class="btn-vintage danger rounded-lg text-sm">🗑️ 删除</button>
+                </div>
+            </div>
+
+            <div class="letter-paper rounded-lg relative" id="readPaper">
+                <div class="letter-header" id="readHeader"></div>
+                <div class="letter-salutation" id="readSalutation"></div>
+                <div class="whitespace-pre-wrap mb-8 text-[#2c1810] leading-relaxed" id="readContent"></div>
+                <div class="letter-signature" id="readSignature"></div>
+                
+                <div class="postmark">
+                    <div class="postmark-inner">
+                        已读<br>
+                        <span id="readDate"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 回信区域 -->
+            <div id="replySection" class="mt-8 hidden">
+                <div class="letter-paper rounded-lg relative">
+                    <h3 class="text-xl font-bold text-[#2c1810] mb-4">✒️ 写回信</h3>
+                    <div class="mb-4">
+                        <label class="block text-[#6b5b45] text-sm mb-2">正文：</label>
+                        <textarea id="replyContent" class="ink-textarea" style="min-height: 200px;" placeholder="写下你的回信..."></textarea>
+                    </div>
+                    <div class="flex gap-4 justify-end">
+                        <button onclick="cancelReply()" class="btn-vintage rounded-lg text-sm">取消</button>
+                        <button onclick="sendReply()" class="btn-vintage rounded-lg flex items-center gap-2">
+                            <span>🔥</span> 寄出回信
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示框 -->
+    <div class="toast" id="toast"></div>
+
+    <!-- 二维码库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <script>
+        // ==================== 数据存储 ====================
+        
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+        }
+
+        function getBaseUrl() {
+            return window.location.origin + window.location.pathname;
+        }
+
+        function getLetterIdFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('letter');
+        }
+
+        // 保存信件
+        function saveLetterToStorage(letter) {
+            const allLetters = JSON.parse(localStorage.getItem('vintageLetters') || '[]');
+            allLetters.push(letter);
+            localStorage.setItem('vintageLetters', JSON.stringify(allLetters));
+            return letter;
+        }
+
+        // 删除信件
+        function deleteLetterFromStorage(id) {
+            let allLetters = JSON.parse(localStorage.getItem('vintageLetters') || '[]');
+            allLetters = allLetters.filter(l => l.id !== id);
+            localStorage.setItem('vintageLetters', JSON.stringify(allLetters));
+        }
+
+        function getLetterById(id) {
+            const allLetters = JSON.parse(localStorage.getItem('vintageLetters') || '[]');
+            return allLetters.find(l => l.id === id);
+        }
+
+        function updateLetter(updated) {
+            let allLetters = JSON.parse(localStorage.getItem('vintageLetters') || '[]');
+            const index = allLetters.findIndex(l => l.id === updated.id);
+            if (index !== -1) {
+                allLetters[index] = updated;
+                localStorage.setItem('vintageLetters', JSON.stringify(allLetters));
+            }
+        }
+
+        function getMyLetters() {
+            const myName = localStorage.getItem('myName') || '我';
+            const allLetters = JSON.parse(localStorage.getItem('vintageLetters') || '[]');
+            return allLetters.filter(l => l.sender === myName || l.recipient === myName);
+        }
+
+        // ==================== 页面状态 ====================
+        
+        let currentFilter = 'all';
+        let currentReadingId = null;
+        let currentReplyTo = null;
+        let currentShareUrl = '';
+
+        // ==================== 初始化 ====================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            updatePostmarkDate();
+            changeWeather('sunny');
+            
+            const letterId = getLetterIdFromUrl();
+            
+            if (letterId) {
+                // 从分享链接打开 - 先显示动画再显示信件
+                showReceiveAnimation(letterId);
+            } else {
+                showPage('home');
+                updateUnreadCount();
+            }
+        });
+
+        function updatePostmarkDate() {
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+            document.getElementById('postmarkDate').textContent = dateStr;
+        }
+
+        // ==================== 页面导航 ====================
+        
+        function showPage(pageName) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageName).classList.add('active');
+            window.scrollTo(0, 0);
+            
+            if (pageName === 'inbox') {
+                renderLetterList();
+            }
+            updateFilterButtons();
+        }
+
+        function updateFilterButtons() {
+            ['all', 'unread', 'sent'].forEach(type => {
+                const btn = document.getElementById('filter-' + type);
+                if (btn) {
+                    if (currentFilter === type) {
+                        btn.className = 'px-4 py-2 rounded-full bg-[#c9b896] text-[#2c1810] text-sm font-semibold hover:bg-[#b8a582] transition-colors';
+                    } else {
+                        btn.className = 'px-4 py-2 rounded-full bg-[#fffef8] border border-[#c9b896] text-[#6b5b45] text-sm hover:bg-[#f4e8d0] transition-colors';
+                    }
+                }
+            });
+        }
+
+        // ==================== 天气系统 ====================
+        
+        function changeWeather(type) {
+            const container = document.getElementById('weatherContainer');
+            const sunRay = document.getElementById('sunRay');
+            container.innerHTML = '';
+            sunRay.style.display = 'none';
+
+            switch(type) {
+                case 'rainy':
+                    createRain();
+                    document.body.style.background = '#d4cec5';
+                    break;
+                case 'snowy':
+                    createSnow();
+                    document.body.style.background = '#e8e4dc';
+                    break;
+                case 'sunny':
+                    sunRay.style.display = 'block';
+                    document.body.style.background = '#f4e8d0';
+                    break;
+                case 'cloudy':
+                    createClouds();
+                    document.body.style.background = '#ddd8cf';
+                    break;
+            }
+        }
+
+        function createRain() {
+            const container = document.getElementById('weatherContainer');
+            for (let i = 0; i < 100; i++) {
+                const drop = document.createElement('div');
+                drop.className = 'rain-drop';
+                drop.style.left = Math.random() * 100 + '%';
+                drop.style.animationDuration = (Math.random() * 1 + 0.5) + 's';
+                drop.style.animationDelay = Math.random() * 2 + 's';
+                container.appendChild(drop);
+            }
+        }
+
+        function createSnow() {
+            const container = document.getElementById('weatherContainer');
+            for (let i = 0; i < 50; i++) {
+                const flake = document.createElement('div');
+                flake.className = 'snowflake';
+                flake.innerHTML = '❄';
+                flake.style.left = Math.random() * 100 + '%';
+                flake.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                flake.style.animationDelay = Math.random() * 5 + 's';
+                flake.style.fontSize = (Math.random() * 10 + 10) + 'px';
+                container.appendChild(flake);
+            }
+        }
+
+        function createClouds() {
+            const container = document.getElementById('weatherContainer');
+            for (let i = 0; i < 5; i++) {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                cloud.style.width = (100 + Math.random() * 150) + 'px';
+                cloud.style.height = (40 + Math.random() * 40) + 'px';
+                cloud.style.top = (Math.random() * 30) + '%';
+                cloud.style.animationDuration = (20 + Math.random() * 20) + 's';
+                cloud.style.animationDelay = (Math.random() * -20) + 's';
+                container.appendChild(cloud);
+            }
+        }
+
+        // ==================== 收信动画（从链接打开时）====================
+        
+        function showReceiveAnimation(letterId) {
+            const letter = getLetterById(letterId);
+            
+            if (!letter) {
+                showToast('信件不存在或已过期');
+                showPage('home');
+                return;
+            }
+
+            // 显示首页并播放动画
+            showPage('home');
+            
+            // 更新信封预览
+            document.getElementById('envelopePreview').innerHTML = `
+                <p class="font-bold truncate">${letter.subject}</p>
+                <p class="text-xs text-gray-500 truncate">来自：${letter.sender}</p>
+            `;
+            
+            // 播放跳跃动画
+            const container = document.getElementById('envelopeContainer');
+            container.classList.remove('animate-in');
+            void container.offsetWidth;
+            container.classList.add('animate-in');
+            
+            // 标记为已读
+            const myName = localStorage.getItem('myName');
+            if (!letter.read && letter.sender !== myName) {
+                letter.read = true;
+                updateLetter(letter);
+            }
+            
+            // 保存当前阅读的信件
+            currentReadingId = letter.id;
+            currentReplyTo = letter;
+            
+            // 2.5秒后自动打开信封
+            setTimeout(() => {
+                const envelope = document.getElementById('envelope');
+                envelope.classList.add('open');
+                
+                // 信封打开后再等1秒，显示读信页面
+                setTimeout(() => {
+                    showReadPage(letter);
+                }, 1200);
+            }, 2500);
+        }
+
+        // ==================== 首页查收信件 ====================
+        
+        function checkMail() {
+            const container = document.getElementById('envelopeContainer');
+            const envelope = document.getElementById('envelope');
+            const flag = document.getElementById('mailboxFlag');
+            
+            container.classList.remove('animate-in');
+            envelope.classList.remove('open');
+            void container.offsetWidth;
+            
+            const myName = localStorage.getItem('myName') || '我';
+            const allLetters = JSON.parse(localStorage.getItem('vintageLetters') || '[]');
+            const unreadLetters = allLetters.filter(l => !l.read && l.recipient === myName);
+            
+            if (unreadLetters.length === 0) {
+                showToast('信箱空空如也...');
+                flag.classList.remove('up');
+                return;
+            }
+
+            flag.classList.remove('up');
+            
+            // 显示最新未读信预览
+            const latest = unreadLetters[unreadLetters.length - 1];
+            document.getElementById('envelopePreview').innerHTML = `
+                <p class="font-bold truncate">${latest.subject}</p>
+                <p class="text-xs text-gray-500 truncate">来自：${latest.sender}</p>
+            `;
+            
+            container.classList.add('animate-in');
+            currentReadingId = latest.id;
+            currentReplyTo = latest;
+            
+            setTimeout(() => {
+                showToast(`你有 ${unreadLetters.length} 封未读信件，点击信封打开`);
+            }, 2500);
+        }
+
+        function openEnvelope() {
+            const envelope = document.getElementById('envelope');
+            const container = document.getElementById('envelopeContainer');
+            
+            // 只有在动画完成后才能点击
+            if (!container.classList.contains('animate-in')) return;
+            
+            const letter = getLetterById(currentReadingId);
+            if (!letter) {
+                showToast('没有可打开的信件');
+                return;
+            }
+            
+            envelope.classList.add('open');
+            
+            setTimeout(() => {
+                showReadPage(letter);
+            }, 1200);
+        }
+
+        // ==================== 写信 & 分享 ====================
+        
+        function saveDraft() {
+            const draft = {
+                recipient: document.getElementById('recipient').value,
+                subject: document.getElementById('subject').value,
+                content: document.getElementById('letterContent').value,
+                sender: document.getElementById('sender').value
+            };
+            localStorage.setItem('letterDraft', JSON.stringify(draft));
+            showToast('草稿已保存');
+        }
+
+        // 加载草稿
+        (function loadDraft() {
+            const draft = JSON.parse(localStorage.getItem('letterDraft') || 'null');
+            if (draft) {
+                document.getElementById('recipient').value = draft.recipient || '';
+                document.getElementById('subject').value = draft.subject || '';
+                document.getElementById('letterContent').value = draft.content || '';
+                document.getElementById('sender').value = draft.sender || '';
+            }
+        })();
+
+        function sendLetter() {
+            const recipient = document.getElementById('recipient').value.trim();
+            const subject = document.getElementById('subject').value.trim();
+            const content = document.getElementById('letterContent').value.trim();
+            const sender = document.getElementById('sender').value.trim() || '匿名';
+
+            if (!recipient || !subject || !content) {
+                showToast('请填写完整信件内容');
+                return;
+            }
+
+            localStorage.setItem('myName', sender);
+
+            const letter = {
+                id: generateId(),
+                recipient,
+                subject,
+                content,
+                sender,
+                date: new Date().toISOString(),
+                read: false,
+                type: 'sent'
+            };
+
+            saveLetterToStorage(letter);
+            
+            // 清除草稿
+            localStorage.removeItem('letterDraft');
+            
+            // 清空表单
+            document.getElementById('recipient').value = '';
+            document.getElementById('subject').value = '';
+            document.getElementById('letterContent').value = '';
+            document.getElementById('sender').value = '';
+            
+            const shareUrl = `${getBaseUrl()}?letter=${letter.id}`;
+            currentShareUrl = shareUrl;
+            showShareModal(shareUrl);
+        }
+
+        function showShareModal(url) {
+            document.getElementById('shareLinkText').textContent = url;
+            
+            // 检测是否在微信内
+            const isWechat = /MicroMessenger/i.test(navigator.userAgent);
+            if (isWechat) {
+                document.getElementById('wechatTip').classList.add('show');
+            }
+            
+            // 生成二维码
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: url,
+                width: 150,
+                height: 150,
+                colorDark: '#2c1810',
+                colorLight: '#f4e8d0',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+            
+            document.getElementById('shareModal').classList.add('show');
+        }
+
+        function closeShareModal() {
+            document.getElementById('shareModal').classList.remove('show');
+            document.getElementById('wechatTip').classList.remove('show');
+            showPage('home');
+        }
+
+        function copyShareLink() {
+            const linkText = document.getElementById('shareLinkText').textContent;
+            
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(linkText).then(() => {
+                    showToast('链接已复制！去微信粘贴给好友吧');
+                });
+            } else {
+                const input = document.createElement('input');
+                input.value = linkText;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                showToast('链接已复制！去微信粘贴给好友吧');
+            }
+        }
+
+        function shareViaNative() {
+            const linkText = currentShareUrl || document.getElementById('shareLinkText').textContent;
+            if (navigator.share) {
+                navigator.share({
+                    title: '时光邮局 - 一封给你的信',
+                    text: '有人给你寄了一封信，点击查看',
+                    url: linkText
+                }).catch(() => {});
+            } else {
+                copyShareLink();
+            }
+        }
+
+        function shareToWeChat() {
+            copyShareLink();
+            showToast('链接已复制，请切换到微信粘贴发送');
+        }
+
+        // ==================== 读信页面 ====================
+        
+        function showReadPage(letter) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('read').classList.add('active');
+            
+            currentReadingId = letter.id;
+            currentReplyTo = letter;
+
+            document.getElementById('readHeader').innerHTML = `
+                <div>${formatDate(letter.date)}</div>
+                <div>来自：${letter.sender}</div>
+            `;
+            document.getElementById('readSalutation').textContent = `致 ${letter.recipient}：`;
+            document.getElementById('readContent').textContent = letter.content;
+            document.getElementById('readSignature').textContent = letter.sender + ' 敬上';
+            document.getElementById('readDate').textContent = formatDate(new Date());
+            
+            // 控制回信按钮显示
+            const myName = localStorage.getItem('myName') || '我';
+            const replyBtn = document.getElementById('replyBtn');
+            if (letter.sender === myName) {
+                replyBtn.style.display = 'none';
+            } else {
+                replyBtn.style.display = 'inline-flex';
+            }
+            
+            // 隐藏回信编辑区
+            document.getElementById('replySection').classList.add('hidden');
+            document.getElementById('replyContent').value = '';
+        }
+
+        // ==================== 回信功能 ====================
+        
+        function replyLetter() {
+            document.getElementById('replySection').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('replyContent').focus();
+                window.scrollTo({ 
+                    top: document.getElementById('replySection').offsetTop - 100, 
+                    behavior: 'smooth' 
+                });
+            }, 100);
+        }
+
+        function cancelReply() {
+            document.getElementById('replySection').classList.add('hidden');
+            document.getElementById('replyContent').value = '';
+        }
+
+        function sendReply() {
+            const content = document.getElementById('replyContent').value.trim();
+            if (!content) {
+                showToast('请填写回信内容');
+                return;
+            }
+
+            if (!currentReplyTo) return;
+
+            const myName = localStorage.getItem('myName') || '匿名';
+            
+            const replyLetter = {
+                id: generateId(),
+                recipient: currentReplyTo.sender,
+                subject: 'Re: ' + currentReplyTo.subject,
+                content: content,
+                sender: myName,
+                date: new Date().toISOString(),
+                read: false,
+                type: 'sent',
+                replyTo: currentReplyTo.id
+            };
+
+            saveLetterToStorage(replyLetter);
+            
+            const shareUrl = `${getBaseUrl()}?letter=${replyLetter.id}`;
+            currentShareUrl = shareUrl;
+            
+            document.getElementById('replySection').classList.add('hidden');
+            document.getElementById('replyContent').value = '';
+            
+            showShareModal(shareUrl);
+        }
+
+        // ==================== 删除功能 ====================
+        
+        function deleteCurrentLetter() {
+            if (!currentReadingId) return;
+            
+            const letter = getLetterById(currentReadingId);
+            if (!letter) return;
+            
+            if (!confirm(`确定要删除"${letter.subject}"这封信吗？\n此操作不可恢复。`)) return;
+            
+            deleteLetterFromStorage(currentReadingId);
+            currentReadingId = null;
+            currentReplyTo = null;
+            
+            showToast('信件已删除');
+            showPage('inbox');
+            updateUnreadCount();
+        }
+
+        function deleteLetterById(id, event) {
+            event.stopPropagation();
+            
+            const letter = getLetterById(id);
+            if (!letter) return;
+            
+            if (!confirm(`确定要删除"${letter.subject}"吗？`)) return;
+            
+            deleteLetterFromStorage(id);
+            renderLetterList();
+            updateUnreadCount();
+            showToast('信件已删除');
+        }
+
+        // ==================== 信箱管理 ====================
+        
+        function renderLetterList() {
+            const list = document.getElementById('letterList');
+            const emptyState = document.getElementById('emptyState');
+            const myName = localStorage.getItem('myName') || '我';
+            
+            let allLetters = JSON.parse(localStorage.getItem('vintageLetters') || '[]');
+            
+            let filtered = allLetters;
+            if (currentFilter === 'unread') {
+                filtered = allLetters.filter(l => !l.read && l.recipient === myName);
+            } else if (currentFilter === 'sent') {
+                filtered = allLetters.filter(l => l.sender === myName);
+            } else {
+                filtered = allLetters.filter(l => l.recipient === myName || l.sender === myName);
+            }
+
+            if (filtered.length === 0) {
+                list.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            
+            list.innerHTML = filtered.sort((a, b) => new Date(b.date) - new Date(a.date)).map(letter => {
+                const isSent = letter.sender === myName;
+                const isUnread = !letter.read && letter.recipient === myName;
+                
+                return `
+                <div class="letter-card p-6 rounded-lg ${isUnread ? 'unread' : ''}" 
+                     onclick="readLetter('${letter.id}')">
+                    <button class="delete-btn" onclick="deleteLetterById('${letter.id}', event)" title="删除">×</button>
+                    <div class="flex justify-between items-start mb-2 pr-10">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${isSent ? '📤' : '📨'}</span>
+                            <div>
+                                <h4 class="font-bold text-[#2c1810] text-lg">${letter.subject}</h4>
+                                <p class="text-sm text-[#6b5b45]">
+                                    ${isSent ? '致：' + letter.recipient : '来自：' + letter.sender}
+                                </p>
+                            </div>
+                        </div>
+                        <span class="text-sm text-[#8b7355]">${formatDate(letter.date)}</span>
+                    </div>
+                    <p class="text-[#6b5b45] truncate pl-12">${letter.content}</p>
+                </div>
+            `}).join('');
+        }
+
+        function filterLetters(type) {
+            currentFilter = type;
+            updateFilterButtons();
+            renderLetterList();
+        }
+
+        function readLetter(id) {
+            const letter = getLetterById(id);
+            if (!letter) return;
+
+            const myName = localStorage.getItem('myName') || '我';
+            if (!letter.read && letter.recipient === myName) {
+                letter.read = true;
+                updateLetter(letter);
+            }
+
+            showReadPage(letter);
+        }
+
+        function backFromRead() {
+            if (window.location.search) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            showPage('inbox');
+        }
+
+        function shareThisLetter() {
+            const letter = getLetterById(currentReadingId);
+            if (!letter) return;
+            
+            const shareUrl = `${getBaseUrl()}?letter=${letter.id}`;
+            currentShareUrl = shareUrl;
+            showShareModal(shareUrl);
+        }
+
+        function updateUnreadCount() {
+            const myName = localStorage.getItem('myName') || '我';
+            const allLetters = JSON.parse(localStorage.getItem('vintageLetters') || '[]');
+            const unread = allLetters.filter(l => !l.read && l.recipient === myName).length;
+            const badge = document.getElementById('unreadBadge');
+            
+            if (unread > 0) {
+                badge.textContent = unread;
+                badge.classList.remove('hidden');
+                document.getElementById('mailboxFlag').classList.add('up');
+            } else {
+                badge.classList.add('hidden');
+                document.getElementById('mailboxFlag').classList.remove('up');
+            }
+        }
+
+        // ==================== 工具函数 ====================
+        
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        // ==================== 示例信件 ====================
+        
+        (function initDemo() {
+            const allLetters = JSON.parse(localStorage.getItem('vintageLetters') || '[]');
+            if (allLetters.length === 0) {
+                const demo = {
+                    id: generateId(),
+                    recipient: '你',
+                    subject: '欢迎来到时光邮局',
+                    content: '亲爱的朋友：\n\n欢迎来到这里。在这个数字化的世界里，我们依然相信文字的力量。\n\n使用方法：\n1. 点击"写一封信"，填写内容\n2. 系统会生成专属分享链接\n3. 将链接发送给朋友（微信、短信、邮件均可）\n4. 对方点击链接即可阅读并回信\n\n愿你在字里行间，找到内心的宁静。\n\n期待你的第一封信。',
+                    sender: '时光邮局局长',
+                    date: new Date(Date.now() - 86400000).toISOString(),
+                    read: false,
+                    type: 'received'
+                };
+                saveLetterToStorage(demo);
+                updateUnreadCount();
+            }
+        })();
+    </script>
+</body>
+</html>
