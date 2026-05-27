@@ -742,6 +742,36 @@
         </div>
     </div>
 
+    <!-- 信箱管理弹窗 -->
+    <div class="modal-overlay" id="binManagerModal">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold text-[#2c1810] mb-4 text-center" style="font-family: 'Ma Shan Zheng', cursive;">📋 信箱管理</h3>
+            
+            <div class="api-setup">
+                <label class="block text-[#6b5b45] text-sm">当前信箱 ID：</label>
+                <div class="flex gap-2 mt-1">
+                    <input type="text" id="currentBinIdDisplay" readonly class="flex-1" style="font-family: monospace; font-size: 14px; margin: 0;">
+                    <button onclick="copyBinId()" class="btn-vintage rounded-lg text-sm whitespace-nowrap" style="padding: 8px 16px; margin: 0;">📋 复制</button>
+                </div>
+                
+                <label class="block text-[#6b5b45] text-sm mt-4">切换到其他信箱：</label>
+                <input type="text" id="switchBinInput" placeholder="粘贴对方的 Bin ID 后点击切换" style="margin-top: 4px;">
+                <button onclick="switchBinFromInput()" class="btn-vintage rounded-lg w-full mt-2">🔄 切换信箱</button>
+                
+                <button onclick="createNewBinWithHistory()" class="btn-vintage rounded-lg w-full mt-3" style="background: linear-gradient(135deg, #4a6741 0%, #3a5232 100%); color: #f4e8d0; border-color: #2d4a25;">
+                    ➕ 新建云端信箱
+                </button>
+                
+                <div id="binHistorySection" class="mt-4 hidden">
+                    <label class="block text-[#6b5b45] text-sm mb-2">历史信箱（点击即可切换）：</label>
+                    <div id="binHistoryList" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+            
+            <button onclick="closeBinManager()" class="btn-vintage rounded-lg w-full mt-4">关闭</button>
+        </div>
+    </div>
+
     <!-- 导航 -->
     <nav class="nav-vintage fixed w-full z-50 px-6 py-4">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
@@ -757,6 +787,7 @@
                     <span id="unreadBadge" class="hidden absolute -top-2 -right-3 w-5 h-5 bg-[#8b2635] text-white text-xs rounded-full flex items-center justify-center">0</span>
                 </button>
                 <button onclick="manualSync()" class="text-[#2c1810] hover:text-[#8b2635] transition-colors font-semibold text-sm" id="syncBtn" style="display:none;">🔄</button>
+                <button onclick="showBinManager()" class="text-[#2c1810] hover:text-[#8b2635] transition-colors font-semibold text-sm">📋 信箱ID</button>
                 <select id="weatherSelect" class="vintage-select rounded" onchange="changeWeather(this.value)">
                     <option value="sunny">☀️ 晴天</option>
                     <option value="rainy">🌧️ 雨天</option>
@@ -837,7 +868,7 @@
                 <button onclick="showPage('home')" class="text-[#6b5b45] hover:text-[#2c1810] transition-colors">← 返回</button>
             </div>
 
-                       <div class="letter-paper rounded-lg relative">
+            <div class="letter-paper rounded-lg relative">
                 <div class="postmark"><div class="postmark-inner">时光邮局<br><span id="postmarkDate"></span></div></div>
 
                 <div class="mb-6">
@@ -894,7 +925,7 @@
             <div class="flex gap-4 mb-6 flex-wrap">
                 <button onclick="filterLetters('all')" class="px-4 py-2 rounded-full bg-[#c9b896] text-[#2c1810] text-sm font-semibold" id="filter-all">全部</button>
                 <button onclick="filterLetters('unread')" class="px-4 py-2 rounded-full bg-[#fffef8] border border-[#c9b896] text-[#6b5b45] text-sm" id="filter-unread">未读</button>
-                <button onclick="filterLetters('sent')" class="')" class="px-4 py-2 rounded-full bg-[#fffef8] border border-[#c9b896] text-[#6b5b45] text-sm" id="filter-sent">已发送</button>
+                <button onclick="filterLetters('sent')" class="px-4 py-2 rounded-full bg-[#fffef8] border border-[#c9b896] text-[#6b5b45] text-sm" id="filter-sent">已发送</button>
             </div>
 
             <div id="letterList" class="space-y-4"></div>
@@ -973,6 +1004,7 @@
             localStorage.setItem('jsonbin_api_key', key);
             
             if (binId) {
+                if (BIN_ID && BIN_ID !== binId) saveBinToHistory(BIN_ID);
                 BIN_ID = binId;
                 localStorage.setItem('jsonbin_bin_id', binId);
                 USE_CLOUD = true;
@@ -987,6 +1019,7 @@
         }
 
         async function createNewBin() {
+            if (BIN_ID) saveBinToHistory(BIN_ID);
             try {
                 updateSyncStatus('syncing');
                 showToast('正在创建云端信箱...');
@@ -1068,6 +1101,109 @@
         setInterval(() => {
             if (USE_CLOUD && document.visibilityState === 'visible') loadLettersFromCloud();
         }, 30000);
+
+        // ==================== 信箱管理 ====================
+        function showBinManager() {
+            document.getElementById('binManagerModal').classList.add('show');
+            updateBinManagerUI();
+        }
+
+        function closeBinManager() {
+            document.getElementById('binManagerModal').classList.remove('show');
+        }
+
+        function updateBinManagerUI() {
+            document.getElementById('currentBinIdDisplay').value = BIN_ID || '未设置';
+            document.getElementById('switchBinInput').value = '';
+            renderBinHistory();
+        }
+
+        async function copyBinId() {
+            if (!BIN_ID) { showToast('没有可复制的 Bin ID'); return; }
+            try {
+                await navigator.clipboard.writeText(BIN_ID);
+                showToast('Bin ID 已复制到剪贴板');
+            } catch (err) {
+                const ta = document.createElement('textarea');
+                ta.value = BIN_ID;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('Bin ID 已复制到剪贴板');
+            }
+        }
+
+        function getBinHistory() {
+            return JSON.parse(localStorage.getItem('bin_history') || '[]');
+        }
+
+        function saveBinToHistory(binId) {
+            if (!binId) return;
+            let history = getBinHistory();
+            history = history.filter(h => h.id !== binId);
+            history.unshift({ id: binId, date: new Date().toISOString() });
+            if (history.length > 10) history = history.slice(0, 10);
+            localStorage.setItem('bin_history', JSON.stringify(history));
+        }
+
+        function renderBinHistory() {
+            const history = getBinHistory();
+            const section = document.getElementById('binHistorySection');
+            const list = document.getElementById('binHistoryList');
+            const filtered = history.filter(h => h.id !== BIN_ID);
+            
+            if (filtered.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+            
+            section.classList.remove('hidden');
+            list.innerHTML = filtered.map(h => `
+                <div onclick="switchBin('${h.id}')" class="letter-card p-3 rounded-lg cursor-pointer border border-[#c9b896] hover:bg-[#fffef8]">
+                    <div class="flex justify-between items-center">
+                        <code style="font-family: monospace; font-size: 13px; color: var(--ink); word-break: break-all;">${h.id}</code>
+                        <span class="text-xs text-[#8b7355] whitespace-nowrap ml-2">${formatDate(h.date)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function switchBinFromInput() {
+            const id = document.getElementById('switchBinInput').value.trim();
+            if (!id) { showToast('请输入 Bin ID'); return; }
+            await switchBin(id);
+        }
+
+        async function switchBin(id) {
+            if (id === BIN_ID) { showToast('已经是当前信箱'); return; }
+            if (BIN_ID) saveBinToHistory(BIN_ID);
+            
+            BIN_ID = id;
+            localStorage.setItem('jsonbin_bin_id', id);
+            USE_CLOUD = !!API_KEY;
+            
+            closeBinManager();
+            if (USE_CLOUD) {
+                updateSyncStatus('syncing');
+                showToast('正在切换信箱...');
+                await loadLettersFromCloud();
+                updateSyncStatus('cloud');
+                showToast('信箱切换成功！');
+            } else {
+                showToast('信箱 ID 已更新，配置 API Key 后即可同步');
+            }
+            updateUnreadCount();
+            if (document.getElementById('inbox').classList.contains('active')) renderLetterList();
+        }
+
+        async function createNewBinWithHistory() {
+            if (!API_KEY) { showToast('请先配置 API Key'); return; }
+            if (BIN_ID) saveBinToHistory(BIN_ID);
+            await createNewBin();
+            updateBinManagerUI();
+            showToast('新信箱创建成功！旧信箱已保存到历史');
+        }
 
         // ==================== 数据操作 ====================
         function generateId() {
