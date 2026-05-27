@@ -980,6 +980,7 @@
         let API_KEY = localStorage.getItem('jsonbin_api_key') || '';
         let BIN_ID = localStorage.getItem('jsonbin_bin_id') || '';
         let USE_CLOUD = false;
+        let isEnvelopeOpening = false;
 
         function checkApiConfig() {
             API_KEY = localStorage.getItem('jsonbin_api_key') || '';
@@ -1047,6 +1048,36 @@
             }
         }
 
+        // ==================== 合并同步（核心修复） ====================
+        function mergeLetters(local, cloud) {
+            const map = new Map();
+            
+            // 先加入本地信件
+            local.forEach(l => {
+                map.set(l.id, { ...l });
+            });
+            
+            // 合并云端信件
+            cloud.forEach(c => {
+                const existing = map.get(c.id);
+                if (!existing) {
+                    // 云端有，本地没有，添加
+                    map.set(c.id, { ...c });
+                } else {
+                    // 两边都有：保留已读状态（任一已读则已读），保留较新的日期
+                    if (c.read) existing.read = true;
+                    const existingDate = new Date(existing.date);
+                    const cloudDate = new Date(c.date);
+                    if (cloudDate > existingDate) {
+                        existing.date = c.date;
+                    }
+                    // 其他字段以本地为准（本地是用户最后操作的）
+                }
+            });
+            
+            return Array.from(map.values()).sort((a, b) => new Date(b.date) - new Date(a.date));
+        }
+
         async function loadLettersFromCloud() {
             if (!USE_CLOUD) return;
             try {
@@ -1056,13 +1087,28 @@
                 });
                 if (!response.ok) throw new Error('加载失败');
                 const data = await response.json();
-                const letters = data.record.letters || [];
-                localStorage.setItem('vintageLetters', JSON.stringify(letters));
+                const cloudLetters = data.record.letters || [];
+                const localLetters = getAllLetters();
+                
+                // 合并云端与本地，而不是直接覆盖
+                const merged = mergeLetters(localLetters, cloudLetters);
+                
+                // 只有当合并结果与本地不同时才更新本地
+                if (JSON.stringify(merged) !== JSON.stringify(localLetters)) {
+                    localStorage.setItem('vintageLetters', JSON.stringify(merged));
+                }
+                
+                // 如果合并结果与云端不同，将合并结果上传回云端
+                if (JSON.stringify(merged) !== JSON.stringify(cloudLetters)) {
+                    await saveLettersToCloud(merged);
+                }
+                
                 updateSyncStatus('cloud');
                 updateUnreadCount();
                 if (document.getElementById('inbox').classList.contains('active')) renderLetterList();
             } catch (error) {
                 updateSyncStatus('local');
+                console.error('同步失败:', error);
             }
         }
 
@@ -1255,6 +1301,10 @@
             checkApiConfig();
             showPage('home');
             updateUnreadCount();
+            // 如果完全没有信，初始化示例信（固定ID防止多端重复）
+            setTimeout(() => {
+                if (getAllLetters().length === 0) initDemo();
+            }, 1000);
         });
 
         function updatePostmarkDate() {
@@ -1263,10 +1313,21 @@
                 `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
         }
 
+        function resetEnvelope() {
+            const container = document.getElementById('envelopeContainer');
+            const envelope = document.getElementById('envelope');
+            container.classList.remove('animate-in');
+            envelope.classList.remove('open');
+            isEnvelopeOpening = false;
+            currentReadingId = null;
+            currentReplyTo = null;
+        }
+
         function showPage(pageName) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(pageName).classList.add('active');
             window.scrollTo(0, 0);
+            if (pageName === 'home') resetEnvelope();
             if (pageName === 'inbox') renderLetterList();
             updateFilterButtons();
         }
@@ -1327,18 +1388,17 @@
             }
         }
 
-        // ==================== 收信动画 ====================
+        // ==================== 收信动画（修复版） ====================
         function checkMail() {
             const container = document.getElementById('envelopeContainer');
             const envelope = document.getElementById('envelope');
             const flag = document.getElementById('mailboxFlag');
             
-            container.classList.remove('animate-in');
-            envelope.classList.remove('open');
-            void container.offsetWidth;
+            // 强制完全重置，防止上次残留的打开状态
+            resetEnvelope();
+            void container.offsetWidth; // 触发重排，确保动画能重新播放
             
-            const myName = localStorage.getItem('myName') || '我';
-            const unreadLetters = getAllLetters().filter(l => !l.read && l.recipient === myName);
+            const unreadLetters = getAllLetters().filter(l => !l.read);
             
             if (unreadLetters.length === 0) {
                 showToast('信箱空空如也...');
@@ -1351,22 +1411,28 @@
             document.getElementById('envelopePreview').innerHTML = 
                 `<p class="font-bold truncate">${latest.subject}</p><p class="text-xs text-gray-500 truncate">来自：${latest.sender}</p>`;
             
-            container.classList.add('animate-in');
             currentReadingId = latest.id;
             currentReplyTo = latest;
+            
+            container.classList.add('animate-in');
             
             setTimeout(() => showToast(`你有 ${unreadLetters.length} 封未读信件，点击信封打开`), 2500);
         }
 
         function openEnvelope() {
+            if (isEnvelopeOpening) return; // 防止重复点击
             const container = document.getElementById('envelopeContainer');
             if (!container.classList.contains('animate-in')) return;
             
             const letter = getLetterById(currentReadingId);
             if (!letter) { showToast('没有可打开的信件'); return; }
             
+            isEnvelopeOpening = true;
             document.getElementById('envelope').classList.add('open');
-            setTimeout(() => showReadPage(letter), 1200);
+            setTimeout(() => {
+                showReadPage(letter);
+                isEnvelopeOpening = false;
+            }, 1200);
         }
 
         // ==================== 写信 ====================
@@ -1515,16 +1581,19 @@
             showToast('信件已删除');
         }
 
-        // ==================== 信箱 ====================
+        // ==================== 信箱（核心修复：全部显示所有信） ====================
         function renderLetterList() {
             const list = document.getElementById('letterList');
             const emptyState = document.getElementById('emptyState');
             const myName = localStorage.getItem('myName') || '我';
             
             let filtered = getAllLetters();
-            if (currentFilter === 'unread') filtered = filtered.filter(l => !l.read && l.recipient === myName);
-            else if (currentFilter === 'sent') filtered = filtered.filter(l => l.sender === myName);
-            else filtered = filtered.filter(l => l.recipient === myName || l.sender === myName);
+            if (currentFilter === 'unread') {
+                filtered = filtered.filter(l => !l.read);
+            } else if (currentFilter === 'sent') {
+                filtered = filtered.filter(l => l.type === 'sent' || l.sender === myName);
+            }
+            // 'all' 不过滤，显示所有信件，保留旧信
 
             if (filtered.length === 0) {
                 list.innerHTML = '';
@@ -1534,8 +1603,8 @@
 
             emptyState.classList.add('hidden');
             list.innerHTML = filtered.sort((a, b) => new Date(b.date) - new Date(a.date)).map(letter => {
-                const isSent = letter.sender === myName;
-                const isUnread = !letter.read && letter.recipient === myName;
+                const isSent = letter.type === 'sent' || letter.sender === myName;
+                const isUnread = !letter.read;
                 
                 return `
                 <div class="letter-card p-6 rounded-lg ${isUnread ? 'unread' : ''}" onclick="readLetter('${letter.id}')">
@@ -1565,8 +1634,7 @@
             const letter = getLetterById(id);
             if (!letter) return;
             
-            const myName = localStorage.getItem('myName') || '我';
-            if (!letter.read && letter.recipient === myName) {
+            if (!letter.read) {
                 letter.read = true;
                 updateLetter(letter);
             }
@@ -1574,12 +1642,12 @@
         }
 
         function backFromRead() {
+            resetEnvelope();
             showPage('inbox');
         }
 
         function updateUnreadCount() {
-            const myName = localStorage.getItem('myName') || '我';
-            const unread = getAllLetters().filter(l => !l.read && l.recipient === myName).length;
+            const unread = getAllLetters().filter(l => !l.read).length;
             const badge = document.getElementById('unreadBadge');
             
             if (unread > 0) {
@@ -1605,23 +1673,25 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // ==================== 示例信 ====================
-        (function initDemo() {
-            if (getAllLetters().length === 0) {
-                const demo = {
-                    id: generateId(),
-                    recipient: '你',
-                    subject: '欢迎来到时光邮局',
-                    content: '亲爱的朋友：\n\n欢迎来到这里。在这个数字化的世界里，我们依然相信文字的力量。\n\n使用方法：\n1. 点击"写一封信"，填写内容\n2. 点击"火漆封印并寄出"，信件自动保存到云端\n3. 对方打开同一个网页，点击"查收信件"即可看到\n4. 阅读后点击"回信"，即可回复\n\n愿你在字里行间，找到内心的宁静。\n\n期待你的第一封信。',
-                    sender: '时光邮局局长',
-                    date: new Date(Date.now() - 86400000).toISOString(),
-                    read: false,
-                    type: 'received'
-                };
-                saveAllLetters([demo]);
+        // ==================== 示例信（固定ID防止多端重复） ====================
+        function initDemo() {
+            if (getAllLetters().length > 0) return;
+            
+            const demo = {
+                id: 'demo-welcome-letter-fixed-001',
+                recipient: '你',
+                subject: '欢迎来到时光邮局',
+                content: '亲爱的朋友：\n\n欢迎来到这里。在这个数字化的世界里，我们依然相信文字的力量。\n\n使用方法：\n1. 点击"写一封信"，填写内容\n2. 点击"火漆封印并寄出"，信件自动保存到云端\n3. 对方打开同一个网页，点击"查收信件"即可看到\n4. 阅读后点击"回信"，即可回复\n\n愿你在字里行间，找到内心的宁静。\n\n期待你的第一封信。',
+                sender: '时光邮局局长',
+                date: new Date(Date.now() - 86400000).toISOString(),
+                read: false,
+                type: 'received'
+            };
+            
+            saveAllLetters([demo]).then(() => {
                 updateUnreadCount();
-            }
-        })();
+            });
+        }
     </script>
 </body>
 </html>
