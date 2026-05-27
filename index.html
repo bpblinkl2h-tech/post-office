@@ -78,9 +78,7 @@
             100% { transform: translateY(100vh); opacity: 0; }
         }
 
-        @keyframes rotate {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes rotate { to { transform: rotate(360deg); } }
 
         @keyframes drift {
             0% { transform: translateX(-200px); }
@@ -670,50 +668,6 @@
 
         .modal-overlay.show .modal-content { transform: scale(1); }
 
-        .share-link-box {
-            background: #fffef8;
-            border: 2px solid var(--envelope-dark);
-            padding: 15px;
-            border-radius: 5px;
-            word-break: break-all;
-            font-family: monospace;
-            font-size: 14px;
-            color: var(--ink);
-            margin: 15px 0;
-            position: relative;
-            padding-right: 80px;
-        }
-
-        .copy-btn {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: var(--envelope);
-            border: 1px solid var(--envelope-dark);
-            padding: 5px 15px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-family: 'Noto Serif SC', serif;
-            font-size: 14px;
-        }
-
-        .copy-btn:hover { background: var(--envelope-dark); }
-
-        #qrcode { display: flex; justify-content: center; margin: 20px 0; }
-
-        .wechat-tip {
-            background: #07c160;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            margin-top: 10px;
-            font-size: 14px;
-            display: none;
-        }
-
-        .wechat-tip.show { display: block; }
-
         .api-setup {
             background: #fffef8;
             border: 2px solid var(--envelope-dark);
@@ -818,7 +772,7 @@
         <div class="max-w-4xl mx-auto px-6 py-12 text-center">
             <h2 class="text-5xl font-bold text-[#2c1810] mb-6" style="font-family: 'Ma Shan Zheng', cursive;">纸短情长，见字如面</h2>
             <p class="text-xl text-[#6b5b45] mb-12 max-w-2xl mx-auto leading-relaxed">
-                在这个快节奏的时代，让我们重拾书信的温度。<br>写一封信，生成专属链接，寄给远方的TA。
+                在这个快节奏的时代，让我们重拾书信的温度。<br>写一封信，对方打开网页就能看到。
             </p>
 
             <div class="mailbox-scene mb-12">
@@ -859,17 +813,17 @@
                 <div class="bg-[#fffef8] p-6 rounded-lg border border-[#c9b896] shadow-md">
                     <div class="text-4xl mb-4">📝</div>
                     <h3 class="text-xl font-bold text-[#2c1810] mb-2">亲笔书写</h3>
-                    <p class="text-[#6b5b45]">写下真挚的文字，系统自动生成专属分享链接</p>
+                    <p class="text-[#6b5b45]">写下真挚的文字，自动保存到云端信箱</p>
                 </div>
                 <div class="bg-[#fffef8] p-6 rounded-lg border border-[#c9b896] shadow-md">
-                    <div class="text-4xl mb-4">🔗</div>
-                    <h3 class="text-xl font-bold text-[#2c1810] mb-2">链接分享</h3>
-                    <p class="text-[#6b5b45]">通过微信、短信发送链接，对方点击即可查看</p>
+                    <div class="text-4xl mb-4">☁️</div>
+                    <h3 class="text-xl font-bold text-[#2c1810] mb-2">云端同步</h3>
+                    <p class="text-[#6b5b45]">对方打开同一个网页，即可看到来信</p>
                 </div>
                 <div class="bg-[#fffef8] p-6 rounded-lg border border-[#c9b896] shadow-md">
                     <div class="text-4xl mb-4">💌</div>
                     <h3 class="text-xl font-bold text-[#2c1810] mb-2">一键回信</h3>
-                    <p class="text-[#6b5b45]">收件人阅读后可直接回信，书信往来不断</p>
+                    <p class="text-[#6b5b45]">阅读后直接回信，书信往来不断</p>
                 </div>
             </div>
         </div>
@@ -883,7 +837,7 @@
                 <button onclick="showPage('home')" class="text-[#6b5b45] hover:text-[#2c1810] transition-colors">← 返回</button>
             </div>
 
-            <div class="letter-paper rounded-lg relative">
+                       <div class="letter-paper rounded-lg relative">
                 <div class="postmark"><div class="postmark-inner">时光邮局<br><span id="postmarkDate"></span></div></div>
 
                 <div class="mb-6">
@@ -909,33 +863,20 @@
                 <div class="flex gap-4 justify-end flex-wrap">
                     <button onclick="saveDraft()" class="btn-vintage rounded-lg text-sm">💾 存草稿</button>
                     <button onclick="sendLetter()" class="btn-vintage rounded-lg flex items-center gap-2">
-                        <span>🔥</span> 火漆封印并生成分享链接
+                        <span>🔥</span> 火漆封印并寄出
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 分享弹窗 -->
-    <div class="modal-overlay" id="shareModal">
-        <div class="modal-content">
-            <h3 class="text-2xl font-bold text-[#2c1810] mb-4 text-center" style="font-family: 'Ma Shan Zheng', cursive;">✉️ 信件已封印</h3>
-            <p class="text-[#6b5b45] text-center mb-4">复制下方链接发送给收信人</p>
-            
-            <div class="share-link-box">
-                <span id="shareLinkText"></span>
-                <button class="copy-btn" onclick="copyShareLink()">复制</button>
-            </div>
-
-            <div id="qrcode"></div>
-            <p class="text-center text-sm text-[#6b5b45] mt-2">扫描二维码在手机上打开</p>
-
-            <div class="wechat-tip" id="wechatTip">💡 微信用户：点击右上角"..."→"复制链接"→粘贴给好友</div>
-
-            <div class="flex gap-4 justify-center mt-6 flex-wrap">
-                <button onclick="closeShareModal()" class="btn-vintage rounded-lg">关闭</button>
-                <button onclick="copyShareLink()" class="btn-vintage rounded-lg">📋 复制链接</button>
-            </div>
+    <!-- 寄出成功提示 -->
+    <div class="modal-overlay" id="successModal">
+        <div class="modal-content text-center">
+            <div class="text-6xl mb-4">✉️</div>
+            <h3 class="text-2xl font-bold text-[#2c1810] mb-4" style="font-family: 'Ma Shan Zheng', cursive;">信件已寄出</h3>
+            <p class="text-[#6b5b45] mb-6">信件已保存到云端信箱<br>对方打开网页即可看到</p>
+            <button onclick="closeSuccessModal()" class="btn-vintage rounded-lg">确定</button>
         </div>
     </div>
 
@@ -953,7 +894,7 @@
             <div class="flex gap-4 mb-6 flex-wrap">
                 <button onclick="filterLetters('all')" class="px-4 py-2 rounded-full bg-[#c9b896] text-[#2c1810] text-sm font-semibold" id="filter-all">全部</button>
                 <button onclick="filterLetters('unread')" class="px-4 py-2 rounded-full bg-[#fffef8] border border-[#c9b896] text-[#6b5b45] text-sm" id="filter-unread">未读</button>
-                <button onclick="filterLetters('sent')" class="px-4 py-2 rounded-full bg-[#fffef8] border border-[#c9b896] text-[#6b5b45] text-sm" id="filter-sent">已发送</button>
+                <button onclick="filterLetters('sent')" class="')" class="px-4 py-2 rounded-full bg-[#fffef8] border border-[#c9b896] text-[#6b5b45] text-sm" id="filter-sent">已发送</button>
             </div>
 
             <div id="letterList" class="space-y-4"></div>
@@ -974,7 +915,6 @@
                 </button>
                 <div class="flex gap-3">
                     <button onclick="replyLetter()" class="btn-vintage rounded-lg text-sm" id="replyBtn">↩️ 回信</button>
-                    <button onclick="shareThisLetter()" class="btn-vintage rounded-lg text-sm">🔗 分享</button>
                     <button onclick="deleteCurrentLetter()" class="btn-vintage danger rounded-lg text-sm">🗑️ 删除</button>
                 </div>
             </div>
@@ -1003,8 +943,6 @@
     </div>
 
     <div class="toast" id="toast"></div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <script>
         // ==================== 云端配置 ====================
@@ -1136,14 +1074,6 @@
             return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
         }
 
-        function getBaseUrl() {
-            return window.location.origin + window.location.pathname;
-        }
-
-        function getLetterIdFromUrl() {
-            return new URLSearchParams(window.location.search).get('letter');
-        }
-
         function getAllLetters() {
             return JSON.parse(localStorage.getItem('vintageLetters') || '[]');
         }
@@ -1182,24 +1112,13 @@
         let currentFilter = 'all';
         let currentReadingId = null;
         let currentReplyTo = null;
-        let currentShareUrl = '';
 
         document.addEventListener('DOMContentLoaded', () => {
             updatePostmarkDate();
             changeWeather('sunny');
             checkApiConfig();
-            
-            const letterId = getLetterIdFromUrl();
-            if (letterId) {
-                if (USE_CLOUD) {
-                    loadLettersFromCloud().then(() => showReceiveAnimation(letterId));
-                } else {
-                    showReceiveAnimation(letterId);
-                }
-            } else {
-                showPage('home');
-                updateUnreadCount();
-            }
+            showPage('home');
+            updateUnreadCount();
         });
 
         function updatePostmarkDate() {
@@ -1273,38 +1192,6 @@
         }
 
         // ==================== 收信动画 ====================
-        function showReceiveAnimation(letterId) {
-            const letter = getLetterById(letterId);
-            if (!letter) {
-                showToast('信件不存在或已过期');
-                showPage('home');
-                return;
-            }
-
-            showPage('home');
-            document.getElementById('envelopePreview').innerHTML = 
-                `<p class="font-bold truncate">${letter.subject}</p><p class="text-xs text-gray-500 truncate">来自：${letter.sender}</p>`;
-            
-            const container = document.getElementById('envelopeContainer');
-            container.classList.remove('animate-in');
-            void container.offsetWidth;
-            container.classList.add('animate-in');
-            
-            const myName = localStorage.getItem('myName');
-            if (!letter.read && letter.sender !== myName) {
-                letter.read = true;
-                updateLetter(letter);
-            }
-            
-            currentReadingId = letter.id;
-            currentReplyTo = letter;
-            
-            setTimeout(() => {
-                document.getElementById('envelope').classList.add('open');
-                setTimeout(() => showReadPage(letter), 1200);
-            }, 2500);
-        }
-
         function checkMail() {
             const container = document.getElementById('envelopeContainer');
             const envelope = document.getElementById('envelope');
@@ -1346,7 +1233,7 @@
             setTimeout(() => showReadPage(letter), 1200);
         }
 
-        // ==================== 写信 & 分享 ====================
+        // ==================== 写信 ====================
         function saveDraft() {
             localStorage.setItem('letterDraft', JSON.stringify({
                 recipient: document.getElementById('recipient').value,
@@ -1397,47 +1284,13 @@
             document.getElementById('letterContent').value = '';
             document.getElementById('sender').value = '';
             
-            currentShareUrl = `${getBaseUrl()}?letter=${letter.id}`;
-            showShareModal(currentShareUrl);
+            // 显示成功提示
+            document.getElementById('successModal').classList.add('show');
         }
 
-        function showShareModal(url) {
-            document.getElementById('shareLinkText').textContent = url;
-            
-            if (/MicroMessenger/i.test(navigator.userAgent)) {
-                document.getElementById('wechatTip').classList.add('show');
-            }
-            
-            const qrContainer = document.getElementById('qrcode');
-            qrContainer.innerHTML = '';
-            new QRCode(qrContainer, {
-                text: url, width: 150, height: 150,
-                colorDark: '#2c1810', colorLight: '#f4e8d0',
-                correctLevel: QRCode.CorrectLevel.M
-            });
-            
-            document.getElementById('shareModal').classList.add('show');
-        }
-
-        function closeShareModal() {
-            document.getElementById('shareModal').classList.remove('show');
-            document.getElementById('wechatTip').classList.remove('show');
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.remove('show');
             showPage('home');
-        }
-
-        function copyShareLink() {
-            const text = document.getElementById('shareLinkText').textContent;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(text).then(() => showToast('链接已复制！'));
-            } else {
-                const input = document.createElement('input');
-                input.value = text;
-                document.body.appendChild(input);
-                input.select();
-                document.execCommand('copy');
-                document.body.removeChild(input);
-                showToast('链接已复制！');
-            }
         }
 
         // ==================== 读信 ====================
@@ -1494,10 +1347,9 @@
 
             await addLetter(reply);
             
-            currentShareUrl = `${getBaseUrl()}?letter=${reply.id}`;
             document.getElementById('replySection').classList.add('hidden');
             document.getElementById('replyContent').value = '';
-            showShareModal(currentShareUrl);
+            document.getElementById('successModal').classList.add('show');
         }
 
         // ==================== 删除 ====================
@@ -1586,17 +1438,7 @@
         }
 
         function backFromRead() {
-            if (window.location.search) {
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
             showPage('inbox');
-        }
-
-        function shareThisLetter() {
-            const letter = getLetterById(currentReadingId);
-            if (!letter) return;
-            currentShareUrl = `${getBaseUrl()}?letter=${letter.id}`;
-            showShareModal(currentShareUrl);
         }
 
         function updateUnreadCount() {
@@ -1634,7 +1476,7 @@
                     id: generateId(),
                     recipient: '你',
                     subject: '欢迎来到时光邮局',
-                    content: '亲爱的朋友：\n\n欢迎来到这里。在这个数字化的世界里，我们依然相信文字的力量。\n\n使用方法：\n1. 点击"写一封信"，填写内容\n2. 系统会生成专属分享链接\n3. 将链接发送给朋友（微信、短信、邮件均可）\n4. 对方点击链接即可阅读并回信\n\n愿你在字里行间，找到内心的宁静。\n\n期待你的第一封信。',
+                    content: '亲爱的朋友：\n\n欢迎来到这里。在这个数字化的世界里，我们依然相信文字的力量。\n\n使用方法：\n1. 点击"写一封信"，填写内容\n2. 点击"火漆封印并寄出"，信件自动保存到云端\n3. 对方打开同一个网页，点击"查收信件"即可看到\n4. 阅读后点击"回信"，即可回复\n\n愿你在字里行间，找到内心的宁静。\n\n期待你的第一封信。',
                     sender: '时光邮局局长',
                     date: new Date(Date.now() - 86400000).toISOString(),
                     read: false,
